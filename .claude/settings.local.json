@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(pkill -f \"vite --port 3000\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(chmod +x \"/Users/mals/Bass tracker/Open Tracker.command\")",
+      "Bash(pkill -f \"vite\")"
+    ]
+  }
+}

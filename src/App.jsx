@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { storageGet, storageSet } from "./storage";
 import { supabase } from "./supabase";
-import { supabase } from "./supabase";
 
 const CONCEPTS = [
   { id: 1, name: "3-Note Inversions Ascending", short: "3-inv ↑" },

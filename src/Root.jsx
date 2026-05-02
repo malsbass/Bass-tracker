@@ -51,10 +51,12 @@ export default function Root() {
   }, []);
 
   function handleSignIn() {
+    localStorage.setItem("ctm-authed", "true");
     signIn();
   }
 
   function handleSignOut() {
+    localStorage.removeItem("ctm-authed");
     signOut();
     setAuthed(false);
   }

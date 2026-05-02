@@ -41,6 +41,10 @@ export default function Root() {
         clearInterval(interval);
         initGoogleAuth(() => setAuthed(true));
         setReady(true);
+      // Intenta login silencioso si ya autorizó antes
+        if (localStorage.getItem("ctm-authed") === "true") {
+          setTimeout(() => signIn(), 200);
+        }
       }
     }, 100);
     return () => clearInterval(interval);

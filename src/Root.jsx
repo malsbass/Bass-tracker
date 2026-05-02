@@ -39,11 +39,25 @@ export default function Root() {
     const interval = setInterval(() => {
       if (window.google?.accounts?.oauth2) {
         clearInterval(interval);
-        initGoogleAuth(() => setAuthed(true));
+
+        initGoogleAuth(
+          () => {
+            // success
+            localStorage.setItem("ctm-authed", "true");
+            setAuthed(true);
+          },
+          () => {
+            // silent login failed — show login button
+            setReady(true);
+          }
+        );
+
+        const hadSession = localStorage.getItem("ctm-authed") === "true";
         setReady(true);
-      // Intenta login silencioso si ya autorizó antes
-        if (localStorage.getItem("ctm-authed") === "true") {
-          setTimeout(() => signIn(), 200);
+
+        if (hadSession) {
+          // try silent login — no prompt, no popup
+          setTimeout(() => signIn(true), 300);
         }
       }
     }, 100);
@@ -51,8 +65,7 @@ export default function Root() {
   }, []);
 
   function handleSignIn() {
-    localStorage.setItem("ctm-authed", "true");
-    signIn();
+    signIn(false);
   }
 
   function handleSignOut() {

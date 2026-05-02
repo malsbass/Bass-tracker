@@ -5,15 +5,17 @@ const RANGE = "Sheet1!A2:B2";
 
 let tokenClient;
 let accessToken = null;
+let onAuthSuccess = null;
 
 export function initGoogleAuth(onSuccess) {
+  onAuthSuccess = onSuccess;
   tokenClient = window.google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: (response) => {
       if (response.error) return;
       accessToken = response.access_token;
-      onSuccess();
+      if (onAuthSuccess) onAuthSuccess();
     },
   });
 }
@@ -29,10 +31,35 @@ export function signOut() {
   }
 }
 
+function refreshToken() {
+  return new Promise((resolve) => {
+    const prev = onAuthSuccess;
+    onAuthSuccess = () => {
+      onAuthSuccess = prev;
+      resolve();
+    };
+    tokenClient.requestAccessToken({ prompt: "" });
+  });
+}
+
+async function fetchWithAuth(url, options = {}) {
+  let res = await fetch(url, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${accessToken}` },
+  });
+  if (res.status === 401) {
+    await refreshToken();
+    res = await fetch(url, {
+      ...options,
+      headers: { ...options.headers, Authorization: `Bearer ${accessToken}` },
+    });
+  }
+  return res;
+}
+
 export async function readData() {
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+  const res = await fetchWithAuth(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}`
   );
   const json = await res.json();
   const values = json.values;
@@ -46,14 +73,11 @@ export async function readData() {
 
 export async function writeData(data) {
   const now = new Date().toISOString();
-  await fetch(
+  await fetchWithAuth(
     `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?valueInputOption=RAW`,
     {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         range: RANGE,
         majorDimension: "ROWS",
@@ -63,4 +87,3 @@ export async function writeData(data) {
   );
   return now;
 }
-

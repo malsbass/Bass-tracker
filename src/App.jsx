@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { storageGet, storageSet } from "./storage";
-import { supabase } from "./supabase";
+import { readData, writeData } from "./googleSheets";
 
 const CONCEPTS = [
   { id: 1, name: "3-Note Inversions Ascending", short: "3-inv ↑" },
@@ -51,7 +51,7 @@ function buildSeedData(existingData) {
   return d;
 }
 
-export default function CTMTracker({ user, onSignOut }) {
+export default function CTMTracker({ onSignOut }) {
   const [activeChord, setActiveChord] = useState("m7");
   const [view, setView] = useState("review");
   const [data, setData] = useState(null);
@@ -66,16 +66,11 @@ export default function CTMTracker({ user, onSignOut }) {
 
   useEffect(() => {
     (async () => {
-      if (user) {
-        // Load from Supabase
-        const { data: row, error } = await supabase
-          .from("practice_data")
-          .select("data, updated_at")
-          .eq("user_id", user.id)
-          .single();
-        if (row) {
-          setData(row.data || {});
-          setLastSaved(row.updated_at);
+      try {
+        const { data: sheetData, updatedAt } = await readData();
+        if (sheetData && Object.keys(sheetData).length > 0) {
+          setData(sheetData);
+          setLastSaved(updatedAt);
         } else {
           // First login — try to migrate localStorage data
           const raw = storageGet(STORAGE_KEY);
@@ -86,8 +81,8 @@ export default function CTMTracker({ user, onSignOut }) {
             setData({});
           }
         }
-      } else {
-        // Fallback: localStorage only
+      } catch {
+        // Fallback to localStorage if Sheets fails
         const raw = storageGet(STORAGE_KEY);
         if (raw) {
           try { const p = JSON.parse(raw); setData(p.data || {}); setLastSaved(p.savedAt || null); }
@@ -98,22 +93,20 @@ export default function CTMTracker({ user, onSignOut }) {
       }
       setLoading(false);
     })();
-  }, [user]);
+  }, []);
 
   async function save(newData) {
     setData(newData);
-    const now = new Date().toISOString();
-
-    if (user) {
-      const { error } = await supabase
-        .from("practice_data")
-        .upsert({ user_id: user.id, data: newData, updated_at: now }, { onConflict: "user_id" });
-      if (error) { showToast("⚠ Error al guardar"); return; }
-    } else {
-      const payload = { data: newData, savedAt: now };
-      storageSet(STORAGE_KEY, JSON.stringify(payload));
+    try {
+      const now = await writeData(newData);
+      setLastSaved(now);
+    } catch {
+      // Fallback to localStorage
+      const now = new Date().toISOString();
+      storageSet(STORAGE_KEY, JSON.stringify({ data: newData, savedAt: now }));
+      setLastSaved(now);
+      showToast("⚠ Guardado local (Sheets no disponible)");
     }
-    setLastSaved(now);
   }
 
   function getEntry(chord, cid, key) {
@@ -237,7 +230,7 @@ export default function CTMTracker({ user, onSignOut }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <button onClick={() => setShowBackup(!showBackup)} style={{ ...S.btn(showBackup), fontSize: 10 }}>backup ↕</button>
-          {user && <button onClick={onSignOut} style={{ padding: "3px 8px", borderRadius: 4, border: "1px solid #2a2a4e", background: "transparent", color: "#555", cursor: "pointer", fontSize: 9, fontFamily: "monospace" }}>sign out</button>}
+          <button onClick={onSignOut} style={{ padding: "3px 8px", borderRadius: 4, border: "1px solid #2a2a4e", background: "transparent", color: "#555", cursor: "pointer", fontSize: 9, fontFamily: "monospace" }}>sign out</button>
         </div>
       </div>
 

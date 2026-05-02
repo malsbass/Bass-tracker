@@ -21,7 +21,7 @@ export function initGoogleAuth(onSuccess) {
 }
 
 export function signIn() {
-  tokenClient.requestAccessToken({ prompt: "consent" });
+  tokenClient.requestAccessToken({ prompt: "" });
 }
 
 export function signOut() {

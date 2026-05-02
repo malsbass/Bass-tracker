@@ -6,22 +6,27 @@ const RANGE = "Sheet1!A2:B2";
 let tokenClient;
 let accessToken = null;
 let onAuthSuccess = null;
+let onAuthFailure = null;
 
-export function initGoogleAuth(onSuccess) {
+export function initGoogleAuth(onSuccess, onFailure) {
   onAuthSuccess = onSuccess;
+  onAuthFailure = onFailure;
   tokenClient = window.google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: (response) => {
-      if (response.error) return;
+      if (response.error) {
+        if (onAuthFailure) onAuthFailure();
+        return;
+      }
       accessToken = response.access_token;
       if (onAuthSuccess) onAuthSuccess();
     },
   });
 }
 
-export function signIn() {
-  tokenClient.requestAccessToken({ prompt: "" });
+export function signIn(silent = false) {
+  tokenClient.requestAccessToken({ prompt: silent ? "" : "consent" });
 }
 
 export function signOut() {
